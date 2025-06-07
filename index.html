@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AMD 株価＋損益＋地震情報表示（NY時間＆取引開始カウントダウン）</title>
+  <title>AMD 株価＋損益表示（NY時間＆取引開始カウントダウン）</title>
   <style>
     html, body {
-      margin: 0; padding: 0; height: 100%;
+      margin: 0;
+      padding: 0;
       background-color: #111;
       color: #fff;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       user-select: none;
       overflow: hidden;
     }
+
     body {
       display: flex;
       flex-direction: column;
@@ -20,18 +22,25 @@
       padding: 1rem;
       box-sizing: border-box;
       position: relative;
+      transform: scale(0.8);
+      transform-origin: top left;
+      width: 125%;
+      height: 125%;
     }
+
     h1 {
       margin: 0 0 1rem 1rem;
       font-size: 1.6rem;
       align-self: flex-start;
     }
+
     #topTimePanel {
       text-align: center;
       margin-bottom: 1rem;
       user-select: none;
       color: #0af;
     }
+
     #nyTime {
       font-size: 2.8rem;
       font-weight: bold;
@@ -39,6 +48,7 @@
       margin-bottom: 0.2rem;
       text-shadow: 0 0 8px #0af;
     }
+
     #countdown {
       font-size: 1.6rem;
       font-weight: bold;
@@ -46,6 +56,7 @@
       text-shadow: 0 0 6px #f33;
       min-height: 1.8em;
     }
+
     #content {
       flex-grow: 1;
       display: flex;
@@ -58,6 +69,7 @@
       justify-content: center;
       position: relative;
     }
+
     #infoPanel {
       flex-shrink: 0;
       width: 280px;
@@ -73,11 +85,13 @@
       gap: 1rem;
       z-index: 10;
     }
+
     #infoPanel label {
       font-weight: bold;
       display: block;
       margin-bottom: 0.3rem;
     }
+
     input[type="number"] {
       width: 100%;
       font-size: 1.1rem;
@@ -89,25 +103,31 @@
       text-align: right;
       transition: background-color 0.3s;
     }
+
     input[type="number"]:focus {
       background-color: #333;
       outline: none;
     }
+
     .profit-display {
       font-size: 1.8rem;
       font-weight: bold;
       margin-top: 0.4rem;
     }
+
     .positive {
       color: #0f0;
     }
+
     .negative {
       color: #f33;
     }
+
     #usdJpy {
       font-weight: bold;
       color: #0af;
     }
+
     #chartContainer {
       flex-grow: 1;
       width: 1200px;
@@ -116,21 +136,6 @@
       border-radius: 8px;
       box-shadow: 0 0 10px #0af;
       overflow: hidden;
-    }
-    #quakeInfo {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(30, 30, 30, 0.8);
-      color: #ffcc00;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 1rem;
-      max-width: 280px;
-      box-shadow: 0 0 8px #ffcc00aa;
-      user-select: text;
-      z-index: 20;
     }
   </style>
 </head>
@@ -161,12 +166,9 @@
     </div>
 
     <div id="chartContainer">
-      <!-- TradingView ウィジェット -->
       <div id="tradingview_amd" style="width: 1200px; height: 700px;"></div>
     </div>
   </div>
-
-  <div id="quakeInfo">地震情報取得中...</div>
 
   <script src="https://s3.tradingview.com/tv.js"></script>
 
@@ -178,7 +180,6 @@
       const buyPriceInput = document.getElementById('buyPriceInput');
       const nyTimeElem = document.getElementById('nyTime');
       const countdownElem = document.getElementById('countdown');
-      const quakeInfoElem = document.getElementById('quakeInfo');
 
       const FINNHUB_API_KEY = 'd123n2pr01qmhi3g84l0d123n2pr01qmhi3g84lg';
       const EXCHANGE_API_KEY = 'cf6b118d13c0f9854ec02ea1';
@@ -186,7 +187,6 @@
       let currentPrice = null;
       let usdJpy = null;
 
-      // 株価取得（AMD）
       async function fetchStockPrice() {
         const url = `https://finnhub.io/api/v1/quote?symbol=AMD&token=${FINNHUB_API_KEY}`;
         const res = await fetch(url);
@@ -196,7 +196,6 @@
         currentPrice = data.c;
       }
 
-      // 為替取得（USDJPY）
       async function fetchUsdJpy() {
         const url = `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/USD`;
         const res = await fetch(url);
@@ -208,11 +207,9 @@
         return data.conversion_rates.JPY;
       }
 
-      // 損益計算＆表示更新
       function updateDisplay() {
         const shares = Number(sharesInput.value);
         const buyPrice = Number(buyPriceInput.value);
-
         if (!currentPrice || !usdJpy || !shares || shares <= 0 || !buyPrice || buyPrice <= 0) {
           profitElem.textContent = 'データを取得中、または入力が無効です';
           profitElem.className = '';
@@ -228,11 +225,8 @@
           `株価: $${currentPrice.toFixed(2)} USD / 為替: ${usdJpy.toFixed(2)}`;
       }
 
-      // NY時間表示（Intl.DateTimeFormat で正確取得）
       function updateNyTime() {
         const now = new Date();
-
-        // NY時間を取得（"America/New_York"タイムゾーン）
         const nyTimeStr = new Intl.DateTimeFormat('ja-JP', {
           timeZone: 'America/New_York',
           hour12: false,
@@ -243,27 +237,15 @@
 
         nyTimeElem.textContent = `NY時間: ${nyTimeStr}`;
 
-        // カウントダウン用のDateオブジェクト生成
         const nyDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-
-        // 株式取引開始は平日9:30AM NY時間
         const countDownTarget = new Date(nyDate);
         countDownTarget.setHours(9, 30, 0, 0);
 
-        // もし9:30を過ぎていたら翌日の9:30に
-        if (nyDate >= countDownTarget) {
-          countDownTarget.setDate(countDownTarget.getDate() + 1);
-        }
-
-        // 土日の処理（NY市場は土日休み）
+        if (nyDate >= countDownTarget) countDownTarget.setDate(countDownTarget.getDate() + 1);
         let day = countDownTarget.getDay();
-        if (day === 6) { // 土曜なら月曜に
-          countDownTarget.setDate(countDownTarget.getDate() + 2);
-        } else if (day === 0) { // 日曜なら月曜に
-          countDownTarget.setDate(countDownTarget.getDate() + 1);
-        }
+        if (day === 6) countDownTarget.setDate(countDownTarget.getDate() + 2);
+        else if (day === 0) countDownTarget.setDate(countDownTarget.getDate() + 1);
 
-        // カウントダウン計算
         const diff = countDownTarget - nyDate;
         if (diff <= 0) {
           countdownElem.textContent = '取引中';
@@ -278,43 +260,6 @@
         countdownElem.style.color = '#f33';
       }
 
-      // 地震情報取得＆表示
-      async function fetchQuakeInfo() {
-        try {
-          const url = 'https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml';
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`地震情報API HTTPエラー: ${res.status}`);
-
-          const text = await res.text();
-          console.log('取得したXML全文:', text);
-
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(text, "application/xml");
-
-          console.log('パース結果:', xmlDoc.documentElement.outerHTML);
-
-          const earthquakes = xmlDoc.querySelectorAll('Report > Body > Earthquake');
-          console.log('Earthquake要素数:', earthquakes.length);
-
-          if (!earthquakes || earthquakes.length === 0) throw new Error('地震情報が見つかりません');
-
-          const earthquake = earthquakes[0];
-          const originTime = earthquake.querySelector('OriginTime')?.textContent || '不明';
-          const hypocenterName = earthquake.querySelector('Hypocenter > AreaName')?.textContent || '不明';
-          const magnitude = earthquake.querySelector('Magnitude')?.textContent || '不明';
-
-          quakeInfoElem.textContent =
-            `最新地震: ${hypocenterName} M${magnitude} 発生時刻: ${originTime}`;
-          quakeInfoElem.style.color = '#ffcc00';
-
-        } catch (e) {
-          quakeInfoElem.textContent = '地震情報取得失敗';
-          quakeInfoElem.style.color = '#f33';
-          console.error(e);
-        }
-      }
-
-      // TradingView ウィジェット初期化
       new TradingView.widget({
         container_id: "tradingview_amd",
         width: 1200,
@@ -333,26 +278,22 @@
         studies: [],
       });
 
-      // 初期取得と更新ループ
       async function updateAll() {
         try {
           await fetchStockPrice();
           usdJpy = await fetchUsdJpy();
           usdJpyElem.textContent = usdJpy.toFixed(2);
           updateDisplay();
-          await fetchQuakeInfo();
         } catch (e) {
           console.error(e);
           profitElem.textContent = 'データ取得エラー';
           usdJpyElem.textContent = '--';
-          quakeInfoElem.textContent = '地震情報取得失敗';
-          quakeInfoElem.style.color = '#f33';
         }
       }
 
       updateAll();
-      setInterval(updateAll, 1000 * 60 * 3); // 3分ごとに更新
-      setInterval(updateNyTime, 1000); // 1秒ごとにNY時間更新
+      setInterval(updateAll, 1000 * 60 * 3);
+      setInterval(updateNyTime, 1000);
 
       buyPriceInput.addEventListener('input', updateDisplay);
       sharesInput.addEventListener('input', updateDisplay);

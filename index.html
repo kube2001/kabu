@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AMD 株価＋損益＋地震情報表示（NY時間＆取引開始カウントダウン）</title>
+  <title>AMD 株価＋損益＋NY市場カウントダウン</title>
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%;
@@ -11,9 +11,7 @@
       color: #fff;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       user-select: none;
-      overflow: hidden;
-      transform: scale(0.9);
-      transform-origin: top left;
+      overflow: auto; /* 縦スクロール可 */
     }
     body {
       display: flex;
@@ -53,12 +51,13 @@
       display: flex;
       flex-direction: row;
       gap: 2rem;
-      max-width: 1550px;
+      max-width: 1400px;
       margin: 0 auto;
       width: 100%;
       align-items: center;
       justify-content: center;
       position: relative;
+      flex-wrap: nowrap; /* 横並び固定 */
     }
     #infoPanel {
       flex-shrink: 0;
@@ -74,6 +73,7 @@
       flex-direction: column;
       gap: 1rem;
       z-index: 10;
+      margin-bottom: 0; /* 縦並び無いので不要 */
     }
     #infoPanel label {
       font-weight: bold;
@@ -112,13 +112,14 @@
     }
     #chartContainer {
       flex-grow: 1;
-      width: 1200px;
-      height: 700px;
+      max-width: 1100px;
+      width: 100%; /* 親幅に合わせる */
+      height: 550px;
       background-color: #222;
       border-radius: 8px;
       box-shadow: 0 0 10px #0af;
       overflow: hidden;
-      margin-top: -100px; /* チャートを100px上にずらす */
+      margin-top: -30px; /* チャートを少し上にずらす */
     }
   </style>
 </head>
@@ -149,8 +150,7 @@
     </div>
 
     <div id="chartContainer">
-      <!-- TradingView ウィジェット -->
-      <div id="tradingview_amd" style="width: 1200px; height: 700px;"></div>
+      <div id="tradingview_amd" style="width: 100%; height: 550px;"></div>
     </div>
   </div>
 
@@ -171,7 +171,6 @@
       let currentPrice = null;
       let usdJpy = null;
 
-      // 株価取得（AMD）
       async function fetchStockPrice() {
         const url = `https://finnhub.io/api/v1/quote?symbol=AMD&token=${FINNHUB_API_KEY}`;
         const res = await fetch(url);
@@ -181,7 +180,6 @@
         currentPrice = data.c;
       }
 
-      // 為替取得（USDJPY）
       async function fetchUsdJpy() {
         const url = `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/USD`;
         const res = await fetch(url);
@@ -193,7 +191,6 @@
         return data.conversion_rates.JPY;
       }
 
-      // 損益計算＆表示更新
       function updateDisplay() {
         const shares = Number(sharesInput.value);
         const buyPrice = Number(buyPriceInput.value);
@@ -213,11 +210,8 @@
           `株価: $${currentPrice.toFixed(2)} USD / 為替: ${usdJpy.toFixed(2)}`;
       }
 
-      // NY時間表示（Intl.DateTimeFormat で正確取得）
       function updateNyTime() {
         const now = new Date();
-
-        // NY時間を取得（"America/New_York"タイムゾーン）
         const nyTimeStr = new Intl.DateTimeFormat('ja-JP', {
           timeZone: 'America/New_York',
           hour12: false,
@@ -228,27 +222,21 @@
 
         nyTimeElem.textContent = `NY時間: ${nyTimeStr}`;
 
-        // カウントダウン用のDateオブジェクト生成
         const nyDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-
-        // 株式取引開始は平日9:30AM NY時間
         const countDownTarget = new Date(nyDate);
         countDownTarget.setHours(9, 30, 0, 0);
 
-        // もし9:30を過ぎていたら翌日の9:30に
         if (nyDate >= countDownTarget) {
           countDownTarget.setDate(countDownTarget.getDate() + 1);
         }
 
-        // 土日の処理（NY市場は土日休み）
         let day = countDownTarget.getDay();
-        if (day === 6) { // 土曜なら月曜に
+        if (day === 6) {
           countDownTarget.setDate(countDownTarget.getDate() + 2);
-        } else if (day === 0) { // 日曜なら月曜に
+        } else if (day === 0) {
           countDownTarget.setDate(countDownTarget.getDate() + 1);
         }
 
-        // カウントダウン計算
         const diff = countDownTarget - nyDate;
         if (diff <= 0) {
           countdownElem.textContent = '取引中';
@@ -263,11 +251,10 @@
         countdownElem.style.color = '#f33';
       }
 
-      // TradingView ウィジェット初期化
       new TradingView.widget({
         container_id: "tradingview_amd",
-        width: 1200,
-        height: 700,
+        width: "100%",
+        height: 550,
         symbol: "NASDAQ:AMD",
         interval: "D",
         timezone: "America/New_York",
@@ -282,7 +269,6 @@
         studies: [],
       });
 
-      // 初期取得と更新ループ
       async function updateAll() {
         try {
           await fetchStockPrice();
@@ -297,8 +283,8 @@
       }
 
       updateAll();
-      setInterval(updateAll, 1000 * 60 * 3); // 3分ごとに更新
-      setInterval(updateNyTime, 1000); // 1秒ごとにNY時間更新
+      setInterval(updateAll, 1000 * 60 * 3);
+      setInterval(updateNyTime, 1000);
 
       buyPriceInput.addEventListener('input', updateDisplay);
       sharesInput.addEventListener('input', updateDisplay);

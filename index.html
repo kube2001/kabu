@@ -17,14 +17,9 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      padding: 1rem;
+      padding: 0.3rem 1rem 1rem 1rem;
       box-sizing: border-box;
       position: relative;
-    }
-    h1 {
-      margin: 0 0 1rem 1rem;
-      font-size: 1.6rem;
-      align-self: flex-start;
     }
     #topTimePanel {
       text-align: center;
@@ -54,56 +49,107 @@
       max-width: 1400px;
       margin: 0 auto;
       width: 100%;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       position: relative;
       flex-wrap: nowrap;
     }
-    #infoPanel {
-      flex-shrink: 0;
-      width: 280px;
-      background: rgba(20, 20, 20, 0.8);
-      padding: 1rem 1.2rem;
-      border-radius: 8px;
-      box-shadow: 0 0 8px #0f0a;
-      font-size: 1.1rem;
-      line-height: 1.4;
-      user-select: text;
+    #leftPanel {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.3rem; /* 少し狭く */
+      flex-shrink: 0;
+      width: 320px;
+      user-select: text;
+      margin-top: -12px; /* さらに上に詰める */
+    }
+    #infoPanel {
+      background: rgba(20, 20, 20, 0.8);
+      padding: 0.4rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #0f0a;
+      font-size: 1.05rem;
+      line-height: 1.3;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
       z-index: 10;
+      white-space: pre-line;
+    }
+    #infoPanel > div {
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     #infoPanel label {
       font-weight: bold;
-      display: block;
-      margin-bottom: 0.3rem;
+      display: inline-block;
+      min-width: 110px;
+      margin-bottom: 0;
+      user-select: text;
     }
     input[type="number"] {
-      width: 100%;
-      font-size: 1.1rem;
-      padding: 0.3rem 0.4rem;
+      width: 90px;
+      font-size: 1rem;
+      padding: 0.15rem 0.3rem;
       border-radius: 4px;
       border: none;
       background-color: #222;
       color: #fff;
       text-align: right;
       transition: background-color 0.3s;
+      margin-bottom: 0;
+      user-select: text;
     }
     input[type="number"]:focus {
       background-color: #333;
       outline: none;
     }
     .profit-display {
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       font-weight: bold;
-      margin-top: 0.4rem;
+      margin-top: 0.1rem;
+      white-space: pre-line;
+      word-break: break-word;
+      user-select: text;
     }
     .positive { color: #0f0; }
     .negative { color: #f33; }
-    #usdJpy {
+    #alertBox {
+      background-color: rgba(255, 50, 50, 0.9);
+      color: #fff;
+      padding: 0.3rem 1rem; /* 上下余白を減らす */
+      border-radius: 6px;
+      box-shadow: 0 0 10px #f33;
       font-weight: bold;
-      color: #0af;
+      font-size: 1rem;
+      white-space: pre-wrap;
+      overflow-y: visible; /* スクロールなしに */
+      max-height: none; /* 高さ制限解除 */
+      user-select: text;
+      display: none;
+      flex-shrink: 0;
+      min-height: auto;
+    }
+    #alertBox h2 {
+      margin: 0 0 0.3rem 0; /* 上下の余白を狭く */
+      font-size: 1.3rem;
+      color: #fff;
+    }
+    #alertContentTitle {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 0.2rem;
+      text-shadow: 0 0 3px #fff;
+    }
+    #alertContentDescription {
+      font-weight: normal;
+      font-size: 0.95rem;
+      line-height: 1.3;
+      white-space: normal;
+      color: #ffbbbb;
+      margin: 0;
     }
     #chartContainer {
       flex-grow: 1;
@@ -116,25 +162,25 @@
       overflow: hidden;
       margin-top: -30px;
     }
-    #alertBox {
-      position: fixed;
-      left: 1rem;
-      bottom: 1rem;
-      width: 300px;
-      background-color: rgba(255, 50, 50, 0.9);
-      color: #fff;
-      padding: 0.8rem 1rem;
-      border-radius: 6px;
-      box-shadow: 0 0 10px #f33;
-      font-weight: bold;
-      z-index: 9999;
-      font-size: 0.95rem;
-      display: none;
-    }
-    #alertBox h2 {
-      margin: 0 0 0.4rem;
-      font-size: 1.1rem;
-      color: #fff;
+    @media screen and (max-width: 720px) {
+      #content {
+        flex-direction: column;
+        align-items: center;
+      }
+      #leftPanel {
+        width: 90vw;
+        gap: 0.6rem;
+        margin-top: 0; /* スマホは戻す */
+      }
+      #chartContainer {
+        max-width: 90vw;
+        margin-top: 0;
+        height: 400px;
+      }
+      #alertBox {
+        max-height: none;
+        overflow-y: visible;
+      }
     }
   </style>
 </head>
@@ -144,44 +190,46 @@
     <div id="countdown"></div>
   </div>
 
-  <h1>AMD 株価チャート (NASDAQ:AMD)</h1>
-
   <div id="content">
-    <div id="infoPanel">
-      <div>
-        <label for="buyPriceInput">購入価格 (USD)：</label>
-        <input id="buyPriceInput" type="number" min="0" step="0.01" value="115.50" />
+    <div id="leftPanel" aria-label="株価関連情報">
+      <div id="infoPanel" role="region" aria-label="含み損益情報">
+        <div>
+          <label for="buyPriceInput">購入価格 (USD)：</label>
+          <input id="buyPriceInput" type="number" min="0" step="0.01" value="115.50" />
+        </div>
+        <div>
+          <label for="sharesInput">保有株数：</label>
+          <input id="sharesInput" type="number" min="1" value="25" />
+        </div>
+        <div>
+          含み損益:
+          <div id="profit" class="profit-display">読み込み中...</div>
+        </div>
       </div>
-      <div>
-        <label for="sharesInput">保有株数：</label>
-        <input id="sharesInput" type="number" min="1" value="25" />
-      </div>
-      <div>
-        含み損益:
-        <div id="profit" class="profit-display">読み込み中...</div>
-        （USD/JPY: <span id="usdJpy">取得中...</span>）
+
+      <div id="alertBox" role="alert" aria-live="assertive" aria-atomic="true" aria-label="緊急速報">
+        <h2>緊急速報</h2>
+        <div id="alertContentTitle">取得中...</div>
+        <div id="alertContentDescription"></div>
       </div>
     </div>
 
-    <div id="chartContainer">
+    <div id="chartContainer" aria-label="AMD株価チャート">
       <div id="tradingview_amd" style="width: 100%; height: 550px;"></div>
     </div>
-  </div>
-
-  <div id="alertBox">
-    <h2>緊急速報</h2>
-    <div id="alertContent">取得中...</div>
   </div>
 
   <script src="https://s3.tradingview.com/tv.js"></script>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const profitElem = document.getElementById('profit');
-      const usdJpyElem = document.getElementById('usdJpy');
       const sharesInput = document.getElementById('sharesInput');
       const buyPriceInput = document.getElementById('buyPriceInput');
       const nyTimeElem = document.getElementById('nyTime');
       const countdownElem = document.getElementById('countdown');
+      const alertBox = document.getElementById('alertBox');
+      const alertContentTitle = document.getElementById('alertContentTitle');
+      const alertContentDescription = document.getElementById('alertContentDescription');
 
       const FINNHUB_API_KEY = 'd123n2pr01qmhi3g84l0d123n2pr01qmhi3g84lg';
       const EXCHANGE_API_KEY = 'cf6b118d13c0f9854ec02ea1';
@@ -189,142 +237,160 @@
       let currentPrice = null;
       let usdJpy = null;
 
+      let soundAllowed = false;
+      const alertSound = new Audio('https://cdn.jsdelivr.net/gh/kaiou2525/soundeffect-lab@main/mp3/alert01.mp3');
+      alertSound.volume = 0.2;
+
+      document.body.addEventListener('click', () => {
+        soundAllowed = true;
+      }, { once: true });
+
       async function fetchStockPrice() {
         const url = `https://finnhub.io/api/v1/quote?symbol=AMD&token=${FINNHUB_API_KEY}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`株価API HTTPエラー: ${res.status}`);
-        const data = await res.json();
-        if (typeof data.c !== 'number' || data.c === 0) throw new Error('価格情報がありません');
-        currentPrice = data.c;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`株価API HTTPエラー: ${res.status}`);
+          const data = await res.json();
+          if (typeof data.c !== 'number' || data.c === 0) throw new Error('価格情報がありません');
+          currentPrice = data.c;
+        } catch (e) {
+          currentPrice = null;
+          throw e;
+        }
       }
 
       async function fetchUsdJpy() {
         const url = `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/USD`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`為替API HTTPエラー: ${res.status}`);
-        const data = await res.json();
-        if (data.result !== 'success') throw new Error('為替情報取得失敗');
-        if (!data.conversion_rates || typeof data.conversion_rates.JPY !== 'number')
-          throw new Error('JPYレートが数値ではありません');
-        return data.conversion_rates.JPY;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`為替API HTTPエラー: ${res.status}`);
+          const data = await res.json();
+          if (data.result !== 'success') throw new Error('為替APIデータ不正');
+          usdJpy = data.conversion_rates.JPY;
+        } catch (e) {
+          usdJpy = null;
+          throw e;
+        }
       }
 
-      function updateDisplay() {
-        const shares = Number(sharesInput.value);
-        const buyPrice = Number(buyPriceInput.value);
-
-        if (!currentPrice || !usdJpy || !shares || shares <= 0 || !buyPrice || buyPrice <= 0) {
-          profitElem.textContent = 'データを取得中、または入力が無効です';
-          profitElem.className = '';
+      function updateProfit() {
+        const buyPrice = parseFloat(buyPriceInput.value);
+        const shares = parseInt(sharesInput.value, 10);
+        if (!currentPrice || !usdJpy || isNaN(buyPrice) || isNaN(shares)) {
+          profitElem.textContent = '計算できません';
+          profitElem.className = 'profit-display';
           return;
         }
-
         const profitUsd = (currentPrice - buyPrice) * shares;
         const profitJpy = profitUsd * usdJpy;
 
-        profitElem.innerHTML =
-          `USD: <span class="${profitUsd >= 0 ? 'positive' : 'negative'}">$${profitUsd.toFixed(2)}</span><br>` +
-          `JPY: <span class="${profitJpy >= 0 ? 'positive' : 'negative'}">\u00a5${profitJpy.toFixed(0)}</span><br>` +
-          `株価: $${currentPrice.toFixed(2)} USD / 為替: ${usdJpy.toFixed(2)}`;
+        const profitStr = 
+          `現在株価: ${currentPrice.toFixed(2)} USD\n` +
+          `USD: ${profitUsd >= 0 ? '+' : ''}${profitUsd.toFixed(2)}\n` +
+          `JPY: ${profitJpy >= 0 ? '+' : ''}${profitJpy.toFixed(0)}\n` +
+          `USD/JPY 為替: ${usdJpy.toFixed(2)}`;
+
+        profitElem.textContent = profitStr;
+        profitElem.className = 'profit-display ' + (profitUsd >= 0 ? 'positive' : 'negative');
       }
 
-      function updateNyTime() {
+      async function fetchAlert() {
+        const proxyUrl = 'https://api.allorigins.win/get?url=';
+        const targetUrl = encodeURIComponent('https://www3.nhk.or.jp/rss/news/cat0.xml');
+        try {
+          const res = await fetch(proxyUrl + targetUrl);
+          if (!res.ok) throw new Error('緊急速報APIエラー');
+          const data = await res.json();
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(data.contents, "text/xml");
+          const firstItem = xml.querySelector('item');
+          if (firstItem) {
+            const title = firstItem.querySelector('title')?.textContent || '';
+            const description = firstItem.querySelector('description')?.textContent || '';
+            alertContentTitle.textContent = title;
+            alertContentDescription.textContent = description;
+            alertBox.style.display = 'block';
+            if (soundAllowed) alertSound.play().catch(() => {});
+          } else {
+            alertContentTitle.textContent = '緊急速報なし';
+            alertContentDescription.textContent = '';
+            alertBox.style.display = 'none';
+          }
+        } catch (e) {
+          alertContentTitle.textContent = '緊急速報取得エラー';
+          alertContentDescription.textContent = '';
+          alertBox.style.display = 'none';
+          console.error(e);
+        }
+      }
+
+      function getNyTime() {
         const now = new Date();
-        const nyTimeStr = new Intl.DateTimeFormat('ja-JP', {
-          timeZone: 'America/New_York',
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }).format(now);
-        nyTimeElem.textContent = `NY時間: ${nyTimeStr}`;
+        const nyTimeStr = now.toLocaleString('ja-JP', { timeZone: 'America/New_York' });
+        return new Date(nyTimeStr);
+      }
 
-        const nyDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const countDownTarget = new Date(nyDate);
-        countDownTarget.setHours(9, 30, 0, 0);
-        if (nyDate >= countDownTarget) countDownTarget.setDate(countDownTarget.getDate() + 1);
-        let day = countDownTarget.getDay();
-        if (day === 6) countDownTarget.setDate(countDownTarget.getDate() + 2);
-        else if (day === 0) countDownTarget.setDate(countDownTarget.getDate() + 1);
+      function updateNyTimeAndCountdown() {
+        const nowNy = getNyTime();
+        const hh = nowNy.getHours().toString().padStart(2, '0');
+        const mm = nowNy.getMinutes().toString().padStart(2, '0');
+        const ss = nowNy.getSeconds().toString().padStart(2, '0');
+        nyTimeElem.textContent = `NY時間: ${hh}:${mm}:${ss}`;
 
-        const diff = countDownTarget - nyDate;
-        if (diff <= 0) {
-          countdownElem.textContent = '取引中';
-          countdownElem.style.color = '#0f0';
-          return;
+        let target = new Date(nowNy);
+        target.setHours(9, 30, 0, 0);
+        if (nowNy >= target) {
+          target.setDate(target.getDate() + 1);
         }
-        const h = Math.floor(diff / 1000 / 60 / 60);
-        const m = Math.floor((diff / 1000 / 60) % 60);
-        const s = Math.floor((diff / 1000) % 60);
-        countdownElem.textContent = `取引開始まであと ${h}時間${m}分${s}秒`;
+        const diffMs = target - nowNy;
+        const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const diffS = Math.floor((diffMs % (1000 * 60)) / 1000);
+        countdownElem.textContent = `NY市場開始まで: ${diffH}時間 ${diffM}分 ${diffS}秒`;
       }
 
-      async function fetchJmaAlert() {
+      function initTradingView() {
+        new TradingView.widget({
+          width: "100%",
+          height: 550,
+          symbol: "NASDAQ:AMD",
+          interval: "D",
+          timezone: "America/New_York",
+          theme: "dark",
+          style: "1",
+          locale: "ja",
+          toolbar_bg: "#222",
+          enable_publishing: false,
+          allow_symbol_change: true,
+          container_id: "tradingview_amd"
+        });
+      }
+
+      async function mainLoop() {
         try {
-          const url = encodeURIComponent('https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml');
-          const res = await fetch(`https://api.allorigins.win/raw?url=${url}`);
-          if (!res.ok) throw new Error('プロキシ取得失敗');
-          const xml = await res.text();
-          const doc = new DOMParser().parseFromString(xml, 'application/xml');
-          const entry = doc.querySelector('entry');
-          if (!entry) return hideAlert();
-          const title = entry.querySelector('title')?.textContent || '';
-          const updated = entry.querySelector('updated')?.textContent || '';
-          const summary = entry.querySelector('summary')?.textContent || '';
-          showAlert(`${title}\n${updated}\n${summary}`);
-        } catch (e) {
-          console.error(e);
-          hideAlert();
-        }
-      }
-
-      function showAlert(text) {
-        const box = document.getElementById('alertBox');
-        document.getElementById('alertContent').textContent = text;
-        box.style.display = 'block';
-      }
-      function hideAlert() {
-        document.getElementById('alertBox').style.display = 'none';
-      }
-
-      new TradingView.widget({
-        container_id: "tradingview_amd",
-        width: "100%",
-        height: 550,
-        symbol: "NASDAQ:AMD",
-        interval: "D",
-        timezone: "America/New_York",
-        theme: "dark",
-        style: "1",
-        locale: "ja",
-        toolbar_bg: "#222",
-        enable_publishing: false,
-        allow_symbol_change: true,
-        hide_top_toolbar: false,
-        save_image: false,
-        studies: [],
-      });
-
-      async function updateAll() {
-        try {
+          await fetchUsdJpy();
           await fetchStockPrice();
-          usdJpy = await fetchUsdJpy();
-          usdJpyElem.textContent = usdJpy.toFixed(2);
-          updateDisplay();
+          updateProfit();
         } catch (e) {
-          console.error(e);
           profitElem.textContent = 'データ取得エラー';
-          usdJpyElem.textContent = '--';
+          profitElem.className = 'profit-display negative';
+          console.error(e);
         }
+        updateNyTimeAndCountdown();
+        await fetchAlert();
       }
 
-      updateAll();
-      setInterval(updateAll, 1000 * 60 * 3);
-      setInterval(updateNyTime, 1000);
-      setInterval(fetchJmaAlert, 1000 * 60);
+      initTradingView();
 
-      buyPriceInput.addEventListener('input', updateDisplay);
-      sharesInput.addEventListener('input', updateDisplay);
+      mainLoop();
+      setInterval(() => {
+        mainLoop();
+      }, 30 * 1000);
+
+      setInterval(updateNyTimeAndCountdown, 1000);
+
+      buyPriceInput.addEventListener('input', updateProfit);
+      sharesInput.addEventListener('input', updateProfit);
     });
   </script>
 </body>

@@ -116,12 +116,13 @@
     }
     .positive { color: #0f0; }
     .negative { color: #f33; }
+    /* 緊急速報BOXの背景色はデフォルト青系 */
     #alertBox {
-      background-color: rgba(255, 50, 50, 0.9);
+      background-color: rgba(0, 90, 200, 0.9);
       color: #fff;
       padding: 0.3rem 1rem; /* 上下余白を減らす */
       border-radius: 6px;
-      box-shadow: 0 0 10px #f33;
+      box-shadow: 0 0 10px rgba(0, 90, 200, 0.9);
       font-weight: bold;
       font-size: 1rem;
       white-space: pre-wrap;
@@ -131,6 +132,7 @@
       display: none;
       flex-shrink: 0;
       min-height: auto;
+      transition: background-color 0.3s, box-shadow 0.3s;
     }
     #alertBox h2 {
       margin: 0 0 0.3rem 0; /* 上下の余白を狭く */
@@ -310,6 +312,20 @@
             alertContentTitle.textContent = title;
             alertContentDescription.textContent = description;
             alertBox.style.display = 'block';
+
+            // 緊急性に応じて背景色を変更
+            // 例: 「緊急」や「注意」などキーワードで色変え（必要に応じて調整してください）
+            if (title.includes('緊急') || title.includes('速報')) {
+              alertBox.style.backgroundColor = 'rgba(255, 50, 50, 0.9)'; // 赤系
+              alertBox.style.boxShadow = '0 0 10px rgba(255, 50, 50, 0.9)';
+            } else if (title.includes('注意')) {
+              alertBox.style.backgroundColor = 'rgba(255, 140, 0, 0.9)'; // オレンジ系
+              alertBox.style.boxShadow = '0 0 10px rgba(255, 140, 0, 0.9)';
+            } else {
+              alertBox.style.backgroundColor = 'rgba(0, 90, 200, 0.9)'; // デフォルト青系
+              alertBox.style.boxShadow = '0 0 10px rgba(0, 90, 200, 0.9)';
+            }
+
             if (soundAllowed) alertSound.play().catch(() => {});
           } else {
             alertContentTitle.textContent = '緊急速報なし';
@@ -330,26 +346,66 @@
         return new Date(nyTimeStr);
       }
 
-      function updateNyTimeAndCountdown() {
-        const nowNy = getNyTime();
-        const hh = nowNy.getHours().toString().padStart(2, '0');
-        const mm = nowNy.getMinutes().toString().padStart(2, '0');
-        const ss = nowNy.getSeconds().toString().padStart(2, '0');
-        nyTimeElem.textContent = `NY時間: ${hh}:${mm}:${ss}`;
+       function updateNyTimeAndCountdown() {
+  const nowNy = getNyTime();
+  const day = nowNy.getDay(); // 0=日曜, 6=土曜
+  const hh = String(nowNy.getHours()).padStart(2, '0');
+  const mm = String(nowNy.getMinutes()).padStart(2, '0');
+  const ss = String(nowNy.getSeconds()).padStart(2, '0');
+  nyTimeElem.textContent = `NY時間: ${hh}:${mm}:${ss}`;
 
-        let target = new Date(nowNy);
-        target.setHours(9, 30, 0, 0);
-        if (nowNy >= target) {
-          target.setDate(target.getDate() + 1);
-        }
-        const diffMs = target - nowNy;
-        const diffH = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        const diffS = Math.floor((diffMs % (1000 * 60)) / 1000);
-        countdownElem.textContent = `NY市場開始まで: ${diffH}時間 ${diffM}分 ${diffS}秒`;
+  const openTime = new Date(nowNy);
+  openTime.setHours(9, 30, 0, 0);
+  const closeTime = new Date(nowNy);
+  closeTime.setHours(16, 0, 0, 0);
+
+  let target, statusText;
+
+  if (day === 0) {
+    // 日曜 → 次の月曜9:30まで
+    const nextOpen = new Date(openTime);
+    nextOpen.setDate(nowNy.getDate() + 1);
+    target = nextOpen;
+    statusText = 'NY市場オープンまで';
+  } else if (day === 6) {
+    // 土曜 → 次の月曜9:30まで
+    const nextOpen = new Date(openTime);
+    nextOpen.setDate(nowNy.getDate() + 2);
+    target = nextOpen;
+    statusText = 'NY市場オープンまで';
+  } else {
+    // 月〜金
+    if (nowNy < openTime) {
+      target = openTime;
+      statusText = 'NY市場オープンまで';
+    } else if (nowNy >= openTime && nowNy < closeTime) {
+      target = closeTime;
+      statusText = 'NY市場クローズまで';
+    } else {
+      // 営業時間外（16時以降）
+      const nextOpen = new Date(openTime);
+      nextOpen.setDate(nowNy.getDate() + 1);
+      const nextDay = nextOpen.getDay();
+      if (nextDay === 6) {
+        nextOpen.setDate(nextOpen.getDate() + 2);
+      } else if (nextDay === 0) {
+        nextOpen.setDate(nextOpen.getDate() + 1);
       }
+      target = nextOpen;
+      statusText = 'NY市場オープンまで';
+    }
+  }
 
-      function initTradingView() {
+  const diffMs = target - nowNy;
+  const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const diffS = Math.floor((diffMs % (1000 * 60)) / 1000);
+  countdownElem.textContent = `${statusText} ${diffH}時間${diffM}分${diffS}秒`;
+}
+
+
+      // TradingViewチャート初期化
+      function initChart() {
         new TradingView.widget({
           width: "100%",
           height: 550,
@@ -368,27 +424,26 @@
 
       async function mainLoop() {
         try {
-          await fetchUsdJpy();
-          await fetchStockPrice();
+          await Promise.all([fetchStockPrice(), fetchUsdJpy()]);
           updateProfit();
+          await fetchAlert();
         } catch (e) {
           profitElem.textContent = 'データ取得エラー';
-          profitElem.className = 'profit-display negative';
           console.error(e);
         }
-        updateNyTimeAndCountdown();
-        await fetchAlert();
       }
 
-      initTradingView();
-
+      // 初期化
+      initChart();
       mainLoop();
+
       setInterval(() => {
         mainLoop();
-      }, 30 * 1000);
+      }, 5 * 60 * 1000); // 5分毎に更新
 
-      setInterval(updateNyTimeAndCountdown, 1000);
+      setInterval(updateNyTimeAndCountdown, 1000); // 1秒毎にNY時間・カウントダウン更新
 
+      // 利用者が数値を変えたら即計算更新
       buyPriceInput.addEventListener('input', updateProfit);
       sharesInput.addEventListener('input', updateProfit);
     });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AMD 株価＋損益＋NY市場カウントダウン</title>
+  <title>AMD 株価＋損益＋NY市場カウントダウン＋緊急速報</title>
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%;
@@ -11,7 +11,7 @@
       color: #fff;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       user-select: none;
-      overflow: auto; /* 縦スクロール可 */
+      overflow: auto;
     }
     body {
       display: flex;
@@ -57,7 +57,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      flex-wrap: nowrap; /* 横並び固定 */
+      flex-wrap: nowrap;
     }
     #infoPanel {
       flex-shrink: 0;
@@ -73,7 +73,6 @@
       flex-direction: column;
       gap: 1rem;
       z-index: 10;
-      margin-bottom: 0; /* 縦並び無いので不要 */
     }
     #infoPanel label {
       font-weight: bold;
@@ -100,12 +99,8 @@
       font-weight: bold;
       margin-top: 0.4rem;
     }
-    .positive {
-      color: #0f0;
-    }
-    .negative {
-      color: #f33;
-    }
+    .positive { color: #0f0; }
+    .negative { color: #f33; }
     #usdJpy {
       font-weight: bold;
       color: #0af;
@@ -113,18 +108,37 @@
     #chartContainer {
       flex-grow: 1;
       max-width: 1100px;
-      width: 100%; /* 親幅に合わせる */
+      width: 100%;
       height: 550px;
       background-color: #222;
       border-radius: 8px;
       box-shadow: 0 0 10px #0af;
       overflow: hidden;
-      margin-top: -30px; /* チャートを少し上にずらす */
+      margin-top: -30px;
+    }
+    #alertBox {
+      position: fixed;
+      left: 1rem;
+      bottom: 1rem;
+      width: 300px;
+      background-color: rgba(255, 50, 50, 0.9);
+      color: #fff;
+      padding: 0.8rem 1rem;
+      border-radius: 6px;
+      box-shadow: 0 0 10px #f33;
+      font-weight: bold;
+      z-index: 9999;
+      font-size: 0.95rem;
+      display: none;
+    }
+    #alertBox h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.1rem;
+      color: #fff;
     }
   </style>
 </head>
 <body>
-
   <div id="topTimePanel">
     <div id="nyTime">NY時間: --:--:--</div>
     <div id="countdown"></div>
@@ -154,8 +168,12 @@
     </div>
   </div>
 
-  <script src="https://s3.tradingview.com/tv.js"></script>
+  <div id="alertBox">
+    <h2>緊急速報</h2>
+    <div id="alertContent">取得中...</div>
+  </div>
 
+  <script src="https://s3.tradingview.com/tv.js"></script>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const profitElem = document.getElementById('profit');
@@ -206,7 +224,7 @@
 
         profitElem.innerHTML =
           `USD: <span class="${profitUsd >= 0 ? 'positive' : 'negative'}">$${profitUsd.toFixed(2)}</span><br>` +
-          `JPY: <span class="${profitJpy >= 0 ? 'positive' : 'negative'}">¥${profitJpy.toFixed(0)}</span><br>` +
+          `JPY: <span class="${profitJpy >= 0 ? 'positive' : 'negative'}">\u00a5${profitJpy.toFixed(0)}</span><br>` +
           `株価: $${currentPrice.toFixed(2)} USD / 為替: ${usdJpy.toFixed(2)}`;
       }
 
@@ -219,23 +237,15 @@
           minute: '2-digit',
           second: '2-digit',
         }).format(now);
-
         nyTimeElem.textContent = `NY時間: ${nyTimeStr}`;
 
         const nyDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
         const countDownTarget = new Date(nyDate);
         countDownTarget.setHours(9, 30, 0, 0);
-
-        if (nyDate >= countDownTarget) {
-          countDownTarget.setDate(countDownTarget.getDate() + 1);
-        }
-
+        if (nyDate >= countDownTarget) countDownTarget.setDate(countDownTarget.getDate() + 1);
         let day = countDownTarget.getDay();
-        if (day === 6) {
-          countDownTarget.setDate(countDownTarget.getDate() + 2);
-        } else if (day === 0) {
-          countDownTarget.setDate(countDownTarget.getDate() + 1);
-        }
+        if (day === 6) countDownTarget.setDate(countDownTarget.getDate() + 2);
+        else if (day === 0) countDownTarget.setDate(countDownTarget.getDate() + 1);
 
         const diff = countDownTarget - nyDate;
         if (diff <= 0) {
@@ -243,12 +253,38 @@
           countdownElem.style.color = '#0f0';
           return;
         }
-
         const h = Math.floor(diff / 1000 / 60 / 60);
         const m = Math.floor((diff / 1000 / 60) % 60);
         const s = Math.floor((diff / 1000) % 60);
         countdownElem.textContent = `取引開始まであと ${h}時間${m}分${s}秒`;
-        countdownElem.style.color = '#f33';
+      }
+
+      async function fetchJmaAlert() {
+        try {
+          const url = encodeURIComponent('https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml');
+          const res = await fetch(`https://api.allorigins.win/raw?url=${url}`);
+          if (!res.ok) throw new Error('プロキシ取得失敗');
+          const xml = await res.text();
+          const doc = new DOMParser().parseFromString(xml, 'application/xml');
+          const entry = doc.querySelector('entry');
+          if (!entry) return hideAlert();
+          const title = entry.querySelector('title')?.textContent || '';
+          const updated = entry.querySelector('updated')?.textContent || '';
+          const summary = entry.querySelector('summary')?.textContent || '';
+          showAlert(`${title}\n${updated}\n${summary}`);
+        } catch (e) {
+          console.error(e);
+          hideAlert();
+        }
+      }
+
+      function showAlert(text) {
+        const box = document.getElementById('alertBox');
+        document.getElementById('alertContent').textContent = text;
+        box.style.display = 'block';
+      }
+      function hideAlert() {
+        document.getElementById('alertBox').style.display = 'none';
       }
 
       new TradingView.widget({
@@ -285,6 +321,7 @@
       updateAll();
       setInterval(updateAll, 1000 * 60 * 3);
       setInterval(updateNyTime, 1000);
+      setInterval(fetchJmaAlert, 1000 * 60);
 
       buyPriceInput.addEventListener('input', updateDisplay);
       sharesInput.addEventListener('input', updateDisplay);

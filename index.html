@@ -234,7 +234,7 @@
       const alertContentDescription = document.getElementById('alertContentDescription');
 
       const FINNHUB_API_KEY = 'd123n2pr01qmhi3g84l0d123n2pr01qmhi3g84lg';
-      const EXCHANGE_API_KEY = 'cf6b118d13c0f9854ec02ea1';
+      const EXCHANGE_API_KEY = '9b593a13b18dea7fc1d7fa2c';
 
       let currentPrice = null;
       let usdJpy = null;
@@ -246,6 +246,18 @@
       document.body.addEventListener('click', () => {
         soundAllowed = true;
       }, { once: true });
+
+      async function fetchWithRetry(fetchFunc, retries = 3, delayMs = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fetchFunc();
+      return;
+    } catch (e) {
+      if (i === retries - 1) throw e;
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+}
 
       async function fetchStockPrice() {
         const url = `https://finnhub.io/api/v1/quote?symbol=AMD&token=${FINNHUB_API_KEY}`;
@@ -261,19 +273,49 @@
         }
       }
 
-      async function fetchUsdJpy() {
-        const url = `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/USD`;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`為替API HTTPエラー: ${res.status}`);
-          const data = await res.json();
-          if (data.result !== 'success') throw new Error('為替APIデータ不正');
-          usdJpy = data.conversion_rates.JPY;
-        } catch (e) {
-          usdJpy = null;
-          throw e;
-        }
-      }
+// キャッシュ用の変数は関数外に定義
+let usdJpyCache = null;
+let usdJpyCacheTime = 0;
+const USDJPY_CACHE_DURATION = 30 * 60 * 1000; // 30分
+
+async function fetchWithRetry(fetchFunc, retries = 3, delayMs = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fetchFunc();
+      return;
+    } catch (e) {
+      if (i === retries - 1) throw e;
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+}
+
+async function fetchUsdJpy() {
+  const now = Date.now();
+  if (usdJpyCache && (now - usdJpyCacheTime) < USDJPY_CACHE_DURATION) {
+    // キャッシュ利用
+    usdJpy = usdJpyCache;
+    return;
+  }
+
+  const url = `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/USD`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`為替API HTTPエラー: ${res.status}`);
+    const data = await res.json();
+    if (data.result !== 'success') throw new Error('為替APIデータ不正');
+    usdJpyCache = data.conversion_rates.JPY;
+    usdJpyCacheTime = now;
+    usdJpy = usdJpyCache;
+  } catch (e) {
+    usdJpy = null;
+    throw e;
+  }
+}
+
+
+
+
 
       function updateProfit() {
         const buyPrice = parseFloat(buyPriceInput.value);
@@ -423,15 +465,20 @@
       }
 
       async function mainLoop() {
-        try {
-          await Promise.all([fetchStockPrice(), fetchUsdJpy()]);
-          updateProfit();
-          await fetchAlert();
-        } catch (e) {
-          profitElem.textContent = 'データ取得エラー';
-          console.error(e);
-        }
-      }
+  try {
+    await Promise.all([
+      fetchWithRetry(fetchStockPrice),
+      fetchWithRetry(fetchUsdJpy),
+    ]);
+    updateProfit();
+    await fetchAlert();
+  } catch (e) {
+    profitElem.textContent = `データ取得エラー: ${e.message || e}`;
+    profitElem.className = 'profit-display error';
+    console.error(e);
+  }
+}
+
 
       // 初期化
       initChart();
@@ -439,7 +486,7 @@
 
       setInterval(() => {
         mainLoop();
-      }, 5 * 60 * 1000); // 5分毎に更新
+      }, 1 * 60 * 1000); // 1分毎に更新
 
       setInterval(updateNyTimeAndCountdown, 1000); // 1秒毎にNY時間・カウントダウン更新
 
@@ -447,6 +494,7 @@
       buyPriceInput.addEventListener('input', updateProfit);
       sharesInput.addEventListener('input', updateProfit);
     });
+
   </script>
 </body>
 </html>

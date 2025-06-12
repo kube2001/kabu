@@ -276,7 +276,7 @@
 // キャッシュ用の変数は関数外に定義
 let usdJpyCache = null;
 let usdJpyCacheTime = 0;
-const USDJPY_CACHE_DURATION = 30 * 60 * 1000; // 30分
+const USDJPY_CACHE_DURATION = 60 * 60 * 1000; // 60分
 
 async function fetchWithRetry(fetchFunc, retries = 3, delayMs = 2000) {
   for (let i = 0; i < retries; i++) {
@@ -330,9 +330,8 @@ async function fetchUsdJpy() {
 
         const profitStr = 
           `現在株価: ${currentPrice.toFixed(2)} USD\n` +
-          `USD: ${profitUsd >= 0 ? '+' : ''}${profitUsd.toFixed(2)}\n` +
-          `JPY: ${profitJpy >= 0 ? '+' : ''}${profitJpy.toFixed(0)}\n` +
-          `USD/JPY 為替: ${usdJpy.toFixed(2)}`;
+          `USD: ${profitUsd >= 0 ? '+' : ''}${profitUsd.toFixed(2)}\n` +          `JPY: ${profitJpy >= 0 ? '+' : ''}${profitJpy.toFixed(0)}\n` +
+          `為替: ${usdJpy.toFixed(2)}`;
 
         profitElem.textContent = profitStr;
         profitElem.className = 'profit-display ' + (profitUsd >= 0 ? 'positive' : 'negative');
